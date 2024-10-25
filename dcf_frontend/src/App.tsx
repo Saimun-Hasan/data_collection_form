@@ -1,5 +1,5 @@
 import { Provider } from "react-redux";
-import { RouterProvider, createBrowserRouter } from "react-router-dom";
+import { RouterProvider, createBrowserRouter, Navigate } from "react-router-dom";
 
 // Import your components
 // import FormPage from "./app/Form/page";
@@ -49,6 +49,10 @@ const router = createBrowserRouter([
       </PrivateRoute>
     ),
   }, */
+  {
+    path: "/",
+    element: <Navigate to="/bangla-digits-audio-data" replace />,
+  },
   {
     path: "/bangla-digits-audio-data",
     element: <NlpForm />,
