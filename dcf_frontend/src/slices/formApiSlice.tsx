@@ -13,7 +13,7 @@ interface FormSubmissionResponse {
 // Define the base URL for the forms API
 const FORMS_URL = process.env.NODE_ENV === 'development'
     ? 'http://localhost:5000/api/forms'
-    : 'https://data-collection-form-backend.vercel.app/api/forms';
+    : 'https://data-collection-form-server.vercel.app/api/forms';
 
 export const formsApiSlice = apiSlice.injectEndpoints({
     endpoints: (builder) => ({
