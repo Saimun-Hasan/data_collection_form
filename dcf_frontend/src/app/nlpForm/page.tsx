@@ -147,8 +147,6 @@ const NlpForm = () => {
 
     const addAudioElement = (blob: Blob, index: number) => {
         const url = URL.createObjectURL(blob);
-        console.log("Audio Blob URL:", url);
-
         setAudioUrls((prev) => {
             const newUrls = [...prev];
             newUrls[index] = url;
