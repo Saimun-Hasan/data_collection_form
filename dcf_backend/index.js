@@ -6,7 +6,7 @@ import cookieParser from 'cookie-parser';
 
 // Import custom modules
 import userRoutes from './routes/userRoutes.js';
-import formRoutes from './routes/FormRoutes.js';  // Fix: Use the correct formRoutes
+import formRoutes from './routes/formRoutes.js';  // Fix: Use the correct formRoutes
 import { notFound, errorHandler } from './middleware/errorMiddleware.js';
 
 // Load environment variables
