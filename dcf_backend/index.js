@@ -27,7 +27,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Routes
 app.get('/', (req, res) => {
-    res.send(' Server Running ');
+    res.send('Server Running');
 });
 app.use('/api/users', userRoutes);
 app.use('/api/forms', formRoutes);
