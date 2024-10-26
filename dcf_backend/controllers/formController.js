@@ -1,7 +1,8 @@
 import asyncHandler from 'express-async-handler';
 import formModel from '../models/formModal.js';
 import googleDriveService from '../utils/googleDriveService.js';
-import Queue from 'better-queue'; // You'll need to install this package
+import Queue from 'better-queue';
+import MemoryStore from 'better-queue-memory';
 
 // Create a queue for processing uploads
 const uploadQueue = new Queue(async function (task, cb) {
@@ -14,7 +15,10 @@ const uploadQueue = new Queue(async function (task, cb) {
     console.error('Error in background upload:', error);
     cb(error);
   }
-}, { concurrent: 2 });
+}, {
+  concurrent: 2,
+  store: new MemoryStore()
+});
 
 // @desc    Register a new user with audio submission
 // @route   POST /api/forms/submit-form
