@@ -14,6 +14,7 @@ const uploadQueue = new Queue(async function (task, cb) {
   } catch (error) {
     console.error('Error in background upload:', error);
     cb(error);
+    await formModel.updateStatus(task.submissionId, 'failed');
   }
 }, {
   concurrent: 2,

@@ -122,21 +122,24 @@ const formModel = {
             `;
             const values = [fileLink, submissionId];
 
+            console.log(`Updating file link for submission ID ${submissionId}, field ${questionField}...`);
             const result = await pool.query(query, values);
+            console.log('File link updated. Checking if all files are uploaded...');
 
-            // Check if all questions have been processed
             const submission = result.rows[0];
             const allUploaded = validQuestionFields.every(field => submission[field] !== null);
+            console.log('All uploaded:', allUploaded);
 
             if (allUploaded) {
-                // Update status to completed if all files are uploaded
+                console.log('All files uploaded. Updating status to completed...');
                 await pool.query(
                     `UPDATE submitted_forms 
-                     SET status = 'completed',
-                         updated_at = NOW()
-                     WHERE id = $1`,
+                 SET status = 'completed',
+                     updated_at = NOW()
+                 WHERE id = $1`,
                     [submissionId]
                 );
+                console.log('Status updated to completed.');
             }
 
             return result.rows[0];
