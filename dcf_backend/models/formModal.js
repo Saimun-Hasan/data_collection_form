@@ -17,11 +17,43 @@ const formModel = {
     create: async (name, email, question_1, question_2, question_3, question_4, question_5, question_6, question_7, question_8, question_9, question_10, question_11) => {
         try {
             const query = `
-                INSERT INTO submitted_forms (name, email, question_1, question_2, question_3, question_4, question_5, question_6, question_7, question_8, question_9, question_10, question_11)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-                RETURNING id, name, email
+                INSERT INTO submitted_forms (
+                    name, 
+                    email, 
+                    question_1, 
+                    question_2, 
+                    question_3, 
+                    question_4, 
+                    question_5, 
+                    question_6, 
+                    question_7, 
+                    question_8, 
+                    question_9, 
+                    question_10, 
+                    question_11,
+                    status,
+                    created_at,
+                    updated_at
+                )
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW(), NOW())
+                RETURNING id, name, email, status
             `;
-            const values = [name, email, question_1, question_2, question_3, question_4, question_5, question_6, question_7, question_8, question_9, question_10, question_11];
+            const values = [
+                name,
+                email,
+                question_1,
+                question_2,
+                question_3,
+                question_4,
+                question_5,
+                question_6,
+                question_7,
+                question_8,
+                question_9,
+                question_10,
+                question_11,
+                'processing' // Initial status
+            ];
 
             const result = await pool.query(query, values);
             return result.rows[0];
@@ -35,7 +67,9 @@ const formModel = {
     findByEmail: async (email) => {
         try {
             const query = `
-                SELECT id, name, email, question_1, question_2, question_3, question_4, question_5, question_6, question_7, question_8, question_9, question_10, question_11
+                SELECT id, name, email, status, 
+                       question_1, question_2, question_3, question_4, question_5, 
+                       question_6, question_7, question_8, question_9, question_10, question_11
                 FROM submitted_forms
                 WHERE email = $1
             `;
@@ -48,6 +82,108 @@ const formModel = {
             throw error;
         }
     },
+
+    // Find submission by ID
+    findById: async (id) => {
+        try {
+            const query = `
+                SELECT id, name, email, status,
+                       question_1, question_2, question_3, question_4, question_5,
+                       question_6, question_7, question_8, question_9, question_10, question_11,
+                       created_at, updated_at
+                FROM submitted_forms
+                WHERE id = $1
+            `;
+            const values = [id];
+
+            const result = await pool.query(query, values);
+            return result.rows[0];
+        } catch (error) {
+            console.error('Error finding submission by ID:', error);
+            throw error;
+        }
+    },
+
+    // Update file link for a specific question
+    updateFileLink: async (submissionId, questionField, fileLink) => {
+        try {
+            // Validate the question field name to prevent SQL injection
+            const validQuestionFields = Array.from({ length: 11 }, (_, i) => `question_${i + 1}`);
+            if (!validQuestionFields.includes(questionField)) {
+                throw new Error('Invalid question field name');
+            }
+
+            const query = `
+                UPDATE submitted_forms 
+                SET ${questionField} = $1,
+                    updated_at = NOW()
+                WHERE id = $2
+                RETURNING *
+            `;
+            const values = [fileLink, submissionId];
+
+            const result = await pool.query(query, values);
+
+            // Check if all questions have been processed
+            const submission = result.rows[0];
+            const allUploaded = validQuestionFields.every(field => submission[field] !== null);
+
+            if (allUploaded) {
+                // Update status to completed if all files are uploaded
+                await pool.query(
+                    `UPDATE submitted_forms 
+                     SET status = 'completed',
+                         updated_at = NOW()
+                     WHERE id = $1`,
+                    [submissionId]
+                );
+            }
+
+            return result.rows[0];
+        } catch (error) {
+            console.error('Error updating file link:', error);
+            throw error;
+        }
+    },
+
+    // Get submission status
+    getSubmissionStatus: async (submissionId) => {
+        try {
+            const query = `
+                SELECT id, name, email, status,
+                       question_1, question_2, question_3, question_4, question_5,
+                       question_6, question_7, question_8, question_9, question_10, question_11,
+                       created_at, updated_at
+                FROM submitted_forms
+                WHERE id = $1
+            `;
+            const values = [submissionId];
+
+            const result = await pool.query(query, values);
+            if (!result.rows[0]) {
+                return null;
+            }
+
+            const submission = result.rows[0];
+            const questionFields = Array.from({ length: 11 }, (_, i) => `question_${i + 1}`);
+
+            return {
+                id: submission.id,
+                name: submission.name,
+                email: submission.email,
+                status: submission.status,
+                fileLinks: questionFields.reduce((acc, field) => {
+                    acc[field] = submission[field];
+                    return acc;
+                }, {}),
+                created_at: submission.created_at,
+                updated_at: submission.updated_at
+            };
+        } catch (error) {
+            console.error('Error getting submission status:', error);
+            throw error;
+        }
+    }
 };
 
 export default formModel;

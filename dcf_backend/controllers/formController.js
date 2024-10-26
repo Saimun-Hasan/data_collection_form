@@ -1,11 +1,25 @@
 import asyncHandler from 'express-async-handler';
 import formModel from '../models/formModal.js';
 import googleDriveService from '../utils/googleDriveService.js';
+import Queue from 'better-queue'; // You'll need to install this package
+
+// Create a queue for processing uploads
+const uploadQueue = new Queue(async function (task, cb) {
+  try {
+    const { file, folderId, customName } = task;
+    const result = await googleDriveService.uploadFile(file, folderId, customName);
+    await formModel.updateFileLink(task.submissionId, task.questionField, result.webViewLink);
+    cb(null, result);
+  } catch (error) {
+    console.error('Error in background upload:', error);
+    cb(error);
+  }
+}, { concurrent: 2 });
 
 // @desc    Register a new user with audio submission
 // @route   POST /api/forms/submit-form
 // @access  Public
-const submitForm = asyncHandler(async (req, res) => {
+/* const submitForm = asyncHandler(async (req, res) => {
   const { name, email } = req.body;
 
   if (!name || !email) {
@@ -78,6 +92,65 @@ const submitForm = asyncHandler(async (req, res) => {
     console.error('Error in form submission:', error);
     res.status(500).json({
       message: 'Error uploading file to Google Drive',
+      error: error.message
+    });
+  }
+}); */
+
+const submitForm = asyncHandler(async (req, res) => {
+  const { name, email } = req.body;
+
+  if (!name || !email) {
+    return res.status(400).json({ message: 'Name and email are required.' });
+  }
+
+  const existingUserByEmail = await formModel.findByEmail(email);
+  if (existingUserByEmail) {
+    return res.status(400).json({ message: 'Email already Submitted.' });
+  }
+
+  try {
+    // Create user folder
+    const userFolderId = await googleDriveService.createFolder(name);
+
+    // Create initial submission record with pending status
+    const submission = await formModel.create(
+      name,
+      email,
+      null, null, null, null, null,
+      null, null, null, null, null, null
+    );
+
+    // Queue up file uploads
+    const questionFields = Array.from({ length: 11 }, (_, i) => `question_${i + 1}`);
+    const customNames = ['random_number.mp3', '0.mp3', '1.mp3', '2.mp3', '3.mp3',
+      '4.mp3', '5.mp3', '6.mp3', '7.mp3', '8.mp3', '9.mp3'];
+
+    questionFields.forEach((fieldName, index) => {
+      if (req.files[fieldName] && req.files[fieldName][0]) {
+        uploadQueue.push({
+          file: req.files[fieldName][0],
+          folderId: userFolderId,
+          customName: customNames[index],
+          submissionId: submission.id,
+          questionField: fieldName
+        });
+      }
+    });
+
+    // Immediately return success response
+    res.status(201).json({
+      id: submission.id,
+      name: submission.name,
+      email: submission.email,
+      message: 'Form submitted successfully. Files are being processed in the background.',
+      status: 'processing'
+    });
+
+  } catch (error) {
+    console.error('Error in form submission:', error);
+    res.status(500).json({
+      message: 'Error processing submission',
       error: error.message
     });
   }
